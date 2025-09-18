@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">WaterLoo</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'dashboard' %}active{% endif %}" href="{% url 'admin_dashboard' %}">Dashboard</a>
+                    </li>
+                    {% if user_role == 'superuser' or user_role == 'manager' or user_role == 'approver' %}  
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'ApplicationApprovals' %}active{% endif %}" href="{% url 'ApplicationApprovals' %}">Application Approvals</a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'Applications' %}active{% endif %}" href="{% url 'Applications' %}">Applications</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    
+
+    <div class="container py-4">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2">Welcome, {{ user_name }}!</h1>
+            <a href="{% url 'logout' %}" class="btn btn-danger">Logout</a>
+        </div>
+
+        <h2 class="h4 mb-4">Current User Role: <span class="badge bg-primary">{{ user_role }}</span></h2>
+
+        <!-- Superusers Section -->
+        <div class="card mb-4">
+            <div class="card-header bg-dark text-white">
+                <h3 class="h5 mb-0">Superusers</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Department</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in enabled_users %}
+                            {% if user.role == "superuser" %}
+                            <tr>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>{% if user.department %}{{ user.department.name }}{% else %}No Department{% endif %}</td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {% if user_role == "superuser" %}
+        <div class="card mb-4">
+            <div class="card-header ">
+                <h5 class="mb-0">Set Approval Rules for Forms</h5>
+            </div>
+            <div class="card-body">
+                <form action="{% url 'set_approval_rule' %}" method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="form_type" class="form-label">Select Form Type:</label>
+                        <select name="form_type" id="form_type" class="form-select" required>
+                            <option value="ferpa">FERPA Authorization</option>
+                            <option value="texas_residency">Texas Residency Affidavit</option>
+                        </select>
+                    </div>
+        
+                    <div class="mb-3">
+                        <label class="form-label">Departments that must approve:</label><br>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="departments" value="registrar" id="registrar">
+                            <label class="form-check-label" for="registrar">Registrar's Office</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="departments" value="residency" id="residency">
+                            <label class="form-check-label" for="residency">Residency Services</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="departments" value="advising" id="advising">
+                            <label class="form-check-label" for="advising">Academic Advising</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="departments" value="academic_affairs" id="academic_affairs">
+                            <label class="form-check-label" for="academic_affairs">Academic Affairs</label>
+                        </div>
+                    </div>
+        
+                    <button type="submit" class="btn btn-success">Save Approval Rule</button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- ✅ List of Current Approval Rules -->
+        <div class="card mb-4">
+            <div class="card-header ">
+                <h5 class="mb-0">Current Approval Rules</h5>
+            </div>
+            <div class="card-body">
+                {% for rule in approval_rules %}
+                <div class="mb-2">
+                    <strong>{{ rule.get_form_type_display }}:</strong>
+                    {% if rule.departments_required.all %}
+                        {% for dept in rule.departments_required.all %}
+                            <span class="badge bg-secondary">{{ dept.name }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="text-muted">No departments set</span>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <p class="text-muted">No rules defined yet.</p>
+                {% endfor %}
+
+        <!-- 🔵 Hardcoded entries for Toronto forms -->
+        <div class="mb-2 mt-4">
+            <strong>Special Circumstance (Toronto):</strong>
+            <span class="badge bg-warning text-dark">External - Approval Handled in Toronto</span>
+        </div>
+        <div class="mb-2">
+            <strong>Instructor Drop (Toronto):</strong>
+            <span class="badge bg-warning text-dark">External - Approval Handled in Toronto</span>
+        </div>
+
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Enabled Users By Department -->
+        <h3 class="h4 mb-3">Enabled Users by Department</h3>
+
+        <!-- Registrar's Office Users -->
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h3 class="h5 mb-0 text-secondary bg-white p-2 rounded">Registrar's Office</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Action</th>
+                                <th>Role</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in enabled_users %}
+                            {% if user.department.code == "registrar" and user.role != "superuser" %}
+                            <tr>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user_role == "superuser" and user.role != "superuser" %}
+                                    <form action="{% url 'toggle_user_status' user.id %}" method="post">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-warning btn-sm">Disable</button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if user_role == "superuser" and user.role != "superuser" %}
+                                    <form action="{% url 'change_user_role' user.id %}" method="post">
+                                        {% csrf_token %}
+                                        <select name="new_role" class="form-select form-select-sm" onchange="this.form.submit()">
+                                            <option value="basicuser" {% if user.role == "basicuser" %}selected{% endif %}>Basic User</option>
+                                            <option value="manager" {% if user.role == "manager" %}selected{% endif %}>Manager</option>
+                                            <option value="superuser" {% if user.role == "superuser" %}selected{% endif %}>Superuser</option>
+                                            <option value="approver" {% if user.role == "approver" %}selected{% endif %}>Approver</option>
+                                        </select>
+                                    </form>
+                                    <form action="{% url 'change_user_department' user.id %}" method="post" class="mt-2">
+                                        {% csrf_token %}
+                                        <select name="new_department" class="form-select form-select-sm" onchange="this.form.submit()">
+                                            <option value="" {% if not user.department %}selected{% endif %}>No Department</option>
+                                            <option value="registrar" {% if user.department.code == "registrar" %}selected{% endif %}>Registrar's Office</option>
+                                            <option value="residency" {% if user.department.code == "residency" %}selected{% endif %}>Residency Services</option>
+                                            <option value="advising" {% if user.department.code == "advising" %}selected{% endif %}>Academic Advising</option>
+                                            <option value="academic_affairs" {% if user.department.code == "academic_affairs" %}selected{% endif %}>Academic Affairs</option>
+                                        </select>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Residency Services Users -->
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h3 class="h5 mb-0 text-secondary bg-white p-2 rounded">Residency Services</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Action</th>
+                                <th>Role</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in enabled_users %}
+                            {% if user.department.code == "residency" and user.role != "superuser" %}
+                            <tr>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user_role == "superuser" and user.role != "superuser" %}
+                                    <form action="{% url 'toggle_user_status' user.id %}" method="post">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-warning btn-sm">Disable</button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if user_role == "superuser" and user.role != "superuser" %}
+                                    <form action="{% url 'change_user_role' user.id %}" method="post">
+                                        {% csrf_token %}
+                                        <select name="new_role" class="form-select form-select-sm" onchange="this.form.submit()">
+                                            <option value="basicuser" {% if user.role == "basicuser" %}selected{% endif %}>Basic User</option>
+                                            <option value="manager" {% if user.role == "manager" %}selected{% endif %}>Manager</option>
+                                            <option value="superuser" {% if user.role == "superuser" %}selected{% endif %}>Superuser</option>
+                                            <option value="approver" {% if user.role == "approver" %}selected{% endif %}>Approver</option>
+                                        </select>
+                                    </form>
+                                    <form action="{% url 'change_user_department' user.id %}" method="post" class="mt-2">
+                                        {% csrf_token %}
+                                        <select name="new_department" class="form-select form-select-sm" onchange="this.form.submit()">
+                                            <option value="" {% if not user.department %}selected{% endif %}>No Department</option>
+                                            <option value="registrar" {% if user.department.code == "registrar" %}selected{% endif %}>Registrar's Office</option>
+                                            <option value="residency" {% if user.department.code == "residency" %}selected{% endif %}>Residency Services</option>
+                                            <option value="advising" {% if user.department.code == "advising" %}selected{% endif %}>Academic Advising</option>
+                                            <option value="academic_affairs" {% if user.department.code == "academic_affairs" %}selected{% endif %}>Academic Affairs</option>
+                                        </select>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Academic Advising Users -->
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h3 class="h5 mb-0 text-secondary bg-white p-2 rounded">Academic Advising</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Action</th>
+                                <th>Role</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in enabled_users %}
+                            {% if user.department.code == "advising" and user.role != "superuser" %}
+                            <tr>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user_role == "superuser" and user.role != "superuser" %}
+                                    <form action="{% url 'toggle_user_status' user.id %}" method="post">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-warning btn-sm">Disable</button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if user_role == "superuser" and user.role != "superuser" %}
+                                    <form action="{% url 'change_user_role' user.id %}" method="post">
+                                        {% csrf_token %}
+                                        <select name="new_role" class="form-select form-select-sm" onchange="this.form.submit()">
+                                            <option value="basicuser" {% if user.role == "basicuser" %}selected{% endif %}>Basic User</option>
+                                            <option value="manager" {% if user.role == "manager" %}selected{% endif %}>Manager</option>
+                                            <option value="superuser" {% if user.role == "superuser" %}selected{% endif %}>Superuser</option>
+                                            <option value="approver" {% if user.role == "approver" %}selected{% endif %}>Approver</option>
+                                        </select>
+                                    </form>
+                                    <form action="{% url 'change_user_department' user.id %}" method="post" class="mt-2">
+                                        {% csrf_token %}
+                                        <select name="new_department" class="form-select form-select-sm" onchange="this.form.submit()">
+                                            <option value="" {% if not user.department %}selected{% endif %}>No Department</option>
+                                            <option value="registrar" {% if user.department.code == "registrar" %}selected{% endif %}>Registrar's Office</option>
+                                            <option value="residency" {% if user.department.code == "residency" %}selected{% endif %}>Residency Services</option>
+                                            <option value="advising" {% if user.department.code == "advising" %}selected{% endif %}>Academic Advising</option>
+                                            <option value="academic_affairs" {% if user.department.code == "academic_affairs" %}selected{% endif %}>Academic Affairs</option>
+                                        </select>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Academic Affairs Users -->
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h3 class="h5 mb-0 text-secondary bg-white p-2 rounded">Academic Affairs</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Action</th>
+                                <th>Role</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in enabled_users %}
+                            {% if user.department.code == "academic_affairs" and user.role != "superuser" %}
+                            <tr>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user_role == "superuser" and user.role != "superuser" %}
+                                    <form action="{% url 'toggle_user_status' user.id %}" method="post">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-warning btn-sm">Disable</button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if user_role == "superuser" and user.role != "superuser" %}
+                                    <form action="{% url 'change_user_role' user.id %}" method="post">
+                                        {% csrf_token %}
+                                        <select name="new_role" class="form-select form-select-sm" onchange="this.form.submit()">
+                                            <option value="basicuser" {% if user.role == "basicuser" %}selected{% endif %}>Basic User</option>
+                                            <option value="manager" {% if user.role == "manager" %}selected{% endif %}>Manager</option>
+                                            <option value="superuser" {% if user.role == "superuser" %}selected{% endif %}>Superuser</option>
+                                            <option value="approver" {% if user.role == "approver" %}selected{% endif %}>Approver</option>
+                                        </select>
+                                    </form>
+                                    <form action="{% url 'change_user_department' user.id %}" method="post" class="mt-2">
+                                        {% csrf_token %}
+                                        <select name="new_department" class="form-select form-select-sm" onchange="this.form.submit()">
+                                            <option value="" {% if not user.department %}selected{% endif %}>No Department</option>
+                                            <option value="registrar" {% if user.department.code == "registrar" %}selected{% endif %}>Registrar's Office</option>
+                                            <option value="residency" {% if user.department.code == "residency" %}selected{% endif %}>Residency Services</option>
+                                            <option value="advising" {% if user.department.code == "advising" %}selected{% endif %}>Academic Advising</option>
+                                            <option value="academic_affairs" {% if user.department.code == "academic_affairs" %}selected{% endif %}>Academic Affairs</option>
+                                        </select>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users with No Department -->
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h3 class="h5 mb-0 text-secondary bg-white p-2 rounded">No Department</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Action</th>
+                                <th>Role</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in enabled_users %}
+                            {% if not user.department and user.role != "superuser" %}
+                            <tr>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user_role == "superuser" and user.role != "superuser" %}
+                                    <form action="{% url 'toggle_user_status' user.id %}" method="post">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-warning btn-sm">Disable</button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if user_role == "superuser" and user.role != "superuser" %}
+                                    <form action="{% url 'change_user_role' user.id %}" method="post">
+                                        {% csrf_token %}
+                                        <select name="new_role" class="form-select form-select-sm" onchange="this.form.submit()">
+                                            <option value="basicuser" {% if user.role == "basicuser" %}selected{% endif %}>Basic User</option>
+                                            <option value="manager" {% if user.role == "manager" %}selected{% endif %}>Manager</option>
+                                            <option value="superuser" {% if user.role == "superuser" %}selected{% endif %}>Superuser</option>
+                                            <option value="approver" {% if user.role == "approver" %}selected{% endif %}>Approver</option>
+                                        </select>
+                                    </form>
+                                    <form action="{% url 'change_user_department' user.id %}" method="post" class="mt-2">
+                                        {% csrf_token %}
+                                        <select name="new_department" class="form-select form-select-sm" onchange="this.form.submit()">
+                                            <option value="" {% if not user.department %}selected{% endif %}>No Department</option>
+                                            <option value="registrar" {% if user.department.code == "registrar" %}selected{% endif %}>Registrar's Office</option>
+                                            <option value="residency" {% if user.department.code == "residency" %}selected{% endif %}>Residency Services</option>
+                                            <option value="advising" {% if user.department.code == "advising" %}selected{% endif %}>Academic Advising</option>
+                                            <option value="academic_affairs" {% if user.department.code == "academic_affairs" %}selected{% endif %}>Academic Affairs</option>
+                                        </select>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Disabled Users Table -->
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h3 class="h5 mb-0 text-danger bg-white p-2 rounded">Disabled Users</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Department</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in disabled_users %}
+                            <tr>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>{{ user.role }}</td>
+                                <td>{% if user.department %}{{ user.department.name }}{% else %}No Department{% endif %}</td>
+                                <td>
+                                    {% if user_role == "superuser" and user.role != "superuser" %}
+                                    <form action="{% url 'toggle_user_status' user.id %}" method="post">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-success btn-sm">Enable</button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
